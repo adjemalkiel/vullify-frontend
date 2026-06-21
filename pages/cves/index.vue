@@ -22,6 +22,24 @@
           <option value="risk_score">Sort by Risk Score</option>
           <option value="severity">Sort by Severity</option>
         </select>
+
+        <select
+          v-model="hasFix"
+          class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"
+        >
+          <option value="">Fix: All</option>
+          <option value="true">Has Fix</option>
+          <option value="false">No Fix</option>
+        </select>
+
+        <select
+          v-model="isKev"
+          class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"
+        >
+          <option value="">KEV: All</option>
+          <option value="true">In KEV</option>
+          <option value="false">Not in KEV</option>
+        </select>
       </div>
 
       <ErrorAlert v-if="error" :message="error" :retry="true" @retry="fetchCVEs()" />
@@ -33,7 +51,9 @@
         :loading="pending"
         empty-message="No CVEs found"
         :sort="sort"
+        clickable
         @sort="handleSort"
+        @row-click="(row) => navigateTo(`/cves/${(row as any).vulnerability_id}`)"
       >
         <template #cell-vulnerability_id="{ row }">
           <div>
@@ -77,6 +97,8 @@ const error = ref<string | null>(null)
 const meta = ref<PaginationMeta | undefined>()
 const severityFilter = ref('')
 const sortBy = ref<string>('occurrences')
+const hasFix = ref('')
+const isKev = ref('')
 const sort = ref<{ column: string; direction: 'asc' | 'desc' }>({ column: 'occurrences', direction: 'desc' })
 const pending = ref(false)
 
@@ -94,12 +116,15 @@ async function fetchCVEs() {
   pending.value = true
   error.value = null
   try {
-    const res = await apiGet<GlobalCVERow[]>('/api/v1/dashboard/cves', {
+    const params: Record<string, string | number | undefined> = {
       page: page.value,
       per_page: 20,
       severity: severityFilter.value || undefined,
       sort_by: sortBy.value,
-    })
+    }
+    if (hasFix.value) params.has_fix = hasFix.value
+    if (isKev.value) params.is_kev = isKev.value
+    const res = await apiGet<GlobalCVERow[]>('/api/v1/dashboard/cves', params)
     meta.value = res.meta
     cves.value = res.data
   } catch (e: unknown) {
@@ -125,7 +150,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
-watch([severityFilter, sortBy], () => { page.value = 1; fetchCVEs() })
+watch([severityFilter, sortBy, hasFix, isKev], () => { page.value = 1; fetchCVEs() })
 watch(page, () => { fetchCVEs() })
 fetchCVEs()
 </script>

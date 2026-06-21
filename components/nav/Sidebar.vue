@@ -59,6 +59,7 @@ const navItems = [
   { to: '/scans', label: 'Scans', icon: 'i-lucide-search' },
   { to: '/registries', label: 'Registries', icon: 'i-lucide-server' },
   { to: '/images', label: 'Images', icon: 'i-lucide-box' },
+  { to: '/targets', label: 'Targets', icon: 'i-lucide-crosshair' },
   { to: '/cves', label: 'Global CVEs', icon: 'i-lucide-shield' },
   { to: '/suppressions', label: 'Suppressions', icon: 'i-lucide-ban' },
   { to: '/reports', label: 'Reports', icon: 'i-lucide-chart-bar' },

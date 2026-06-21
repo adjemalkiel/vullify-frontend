@@ -35,20 +35,28 @@
         </template>
         <template #cell-actions="{ row }">
           <div class="flex items-center gap-2">
+            <NuxtLink
+              :to="`/registries/${row.id}`"
+              class="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-cyan-400 transition-colors inline-block"
+              title="Edit registry"
+              @click.stop
+            >
+              <UIcon name="i-lucide-pencil" class="size-4" />
+            </NuxtLink>
             <button
               class="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-cyan-400 transition-colors"
               title="Sync registry"
               :disabled="syncingRegistries.has(row.id as string)"
               @click.stop="handleSync(row.id as string)"
             >
-              <span class="i-lucide-refresh-cw block size-4" :class="{ 'animate-spin': syncingRegistries.has(row.id as string) }" />
+              <UIcon name="i-lucide-refresh-cw" class="size-4" :class="{ 'animate-spin': syncingRegistries.has(row.id as string) }" />
             </button>
             <button
               class="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors"
               title="Delete registry"
               @click.stop="deleteTarget = row as unknown as RegistryRow"
             >
-              <span class="i-lucide-trash block size-4" />
+              <UIcon name="i-lucide-trash" class="size-4" />
             </button>
           </div>
         </template>

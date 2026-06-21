@@ -39,10 +39,16 @@
         </template>
         <template #cell-actions="{ row }">
           <button
+            class="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-cyan-400 transition-colors"
+            @click.stop="openEdit(row as unknown as SuppressionRow)"
+          >
+            <UIcon name="i-lucide-pencil" class="size-4" />
+          </button>
+          <button
             class="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors"
             @click.stop="deleteTarget = row as unknown as SuppressionRow"
           >
-            <span class="i-lucide-trash block size-4" />
+            <UIcon name="i-lucide-trash" class="size-4" />
           </button>
         </template>
       </DataTable>
@@ -125,15 +131,59 @@
         @confirm="handleDelete"
         @cancel="deleteTarget = null"
       />
+
+      <!-- Edit Modal -->
+      <Teleport to="body">
+        <div v-if="editTarget !== null" class="fixed inset-0 z-50 flex items-center justify-center">
+          <div class="absolute inset-0 bg-black/60" @click="editTarget = null" />
+          <div class="relative w-full max-w-md rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-2xl">
+            <h3 class="text-lg font-semibold text-gray-100 mb-4">Edit Suppression</h3>
+
+            <div class="mb-4 rounded-lg bg-gray-800/50 p-3 border border-gray-700">
+              <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Current Rule</div>
+              <div class="space-y-1">
+                <div v-if="editTarget.cve_id" class="text-sm">
+                  <span class="text-gray-500">CVE:</span>
+                  <span class="font-mono text-cyan-400 ml-1">{{ editTarget.cve_id }}</span>
+                </div>
+                <div v-if="editTarget.pkg_name" class="text-sm">
+                  <span class="text-gray-500">Package:</span>
+                  <span class="text-gray-300 ml-1">{{ editTarget.pkg_name }}</span>
+                </div>
+                <div class="text-sm">
+                  <span class="text-gray-500">Scope:</span>
+                  <span class="text-gray-300 ml-1">{{ editTarget.image_id ? editTarget.image_id.substring(0, 12) + '...' : 'All images' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <form class="space-y-4" @submit.prevent="handleUpdate">
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Reason</label>
+                <textarea v-model="editForm.reason" rows="2" placeholder="Why is this being suppressed?" class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-cyan-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Expires At</label>
+                <input v-model="editForm.expires_at" type="datetime-local" class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 focus:border-cyan-500 focus:outline-none" />
+                <p class="mt-1 text-xs text-gray-500">Leave empty for no expiration.</p>
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-300 hover:bg-gray-800" @click="editTarget = null">Cancel</button>
+                <button type="submit" class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
     </div>
 </template>
 
 <script setup lang="ts">
-import type { SuppressionRow, CreateSuppressionPayload, GlobalCVERow } from '~/types/api'
+import type { SuppressionRow, CreateSuppressionPayload, UpdateSuppressionPayload, GlobalCVERow } from '~/types/api'
 import type { PaginationMeta } from '~/types/api'
 
 
-const { apiGet, apiPost, apiDelete } = useApi()
+const { apiGet, apiPost, apiPatch, apiDelete } = useApi()
 const toast = useToast()
 
 const page = ref(1)
@@ -141,6 +191,12 @@ const error = ref<string | null>(null)
 const meta = ref<PaginationMeta | undefined>()
 const showCreateModal = ref(false)
 const deleteTarget = ref<SuppressionRow | null>(null)
+const editTarget = ref<SuppressionRow | null>(null)
+
+const editForm = reactive<UpdateSuppressionPayload>({
+  reason: '',
+  expires_at: '',
+})
 
 const cveSearch = ref('')
 const cveResults = ref<GlobalCVERow[]>([])
@@ -229,6 +285,34 @@ function resetForm() {
   createForm.image_id = ''
   createForm.reason = ''
   createForm.expires_at = ''
+}
+
+function openEdit(row: SuppressionRow) {
+  editTarget.value = row
+  editForm.reason = row.reason
+  editForm.expires_at = row.expires_at ? toLocalDatetime(row.expires_at) : ''
+}
+
+function toLocalDatetime(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+async function handleUpdate() {
+  if (!editTarget.value) return
+  const payload: Record<string, unknown> = {}
+  if (editForm.reason) payload.reason = editForm.reason
+  if (editForm.expires_at) payload.expires_at = new Date(editForm.expires_at).toISOString()
+
+  try {
+    await apiPatch<SuppressionRow>(`/api/v1/suppressions/${editTarget.value.id}`, payload)
+    toast.add({ title: 'Updated', description: 'Suppression updated', color: 'success' })
+    editTarget.value = null
+    refresh()
+  } catch {
+    // handled
+  }
 }
 
 async function handleDelete() {

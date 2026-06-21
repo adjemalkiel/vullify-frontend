@@ -57,9 +57,14 @@ export function useApi() {
     return result.data
   }
 
+  async function apiPatch<T>(url: string, body?: Record<string, unknown>): Promise<T> {
+    const result = await apiFetch<Envelope<T>>(url, { method: 'PATCH', body })
+    return result.data
+  }
+
   async function apiDelete(url: string): Promise<void> {
     await apiFetch(url, { method: 'DELETE' })
   }
 
-  return { apiGet, apiGetRaw, apiPost, apiPut, apiDelete }
+  return { apiGet, apiGetRaw, apiPost, apiPut, apiPatch, apiDelete }
 }

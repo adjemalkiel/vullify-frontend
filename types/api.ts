@@ -224,6 +224,7 @@ export interface SuppressionRow {
   accepted_by: string
   expires_at: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface CreateSuppressionPayload {
@@ -231,6 +232,11 @@ export interface CreateSuppressionPayload {
   pkg_name?: string
   image_id?: string
   reason: string
+  expires_at?: string
+}
+
+export interface UpdateSuppressionPayload {
+  reason?: string
   expires_at?: string
 }
 
@@ -262,6 +268,31 @@ export interface VulnerabilityReportRow {
   last_seen: string
 }
 
+export interface CVEImageSummary {
+  image_id: string
+  repository: string
+  tag: string
+  fixed_version?: string
+}
+
+export interface CVEDetail {
+  vulnerability_id: string
+  title: string
+  description: string
+  severity: string
+  occurrences: number
+  risk_score: number | null
+  cvss_v3_score: number | null
+  epss_score: number | null
+  epss_percentile: number | null
+  kev_listed: boolean
+  kev_date_added: string | null
+  exploit_exists: boolean
+  data_sources: string[]
+  affected_images: CVEImageSummary[]
+  last_seen: string
+}
+
 /* ------------------------------------------------------------------ */
 /*  Query params                                                      */
 /* ------------------------------------------------------------------ */
@@ -287,3 +318,27 @@ export interface ReportParams extends PaginationParams {
   from?: string
   to?: string
 }
+
+/* ------------------------------------------------------------------ */
+/*  Targets (monitoring)                                                */
+/* ------------------------------------------------------------------ */
+
+export interface TargetRow {
+  id: string
+  image_id: string
+  scan_frequency: string
+  latest_scan_id: string | null
+  latest_scan_status: ScanStatus | null
+  created_at: string
+  updated_at: string
+  repository: string
+  tag: string
+  registry_url: string
+  registry_name: string
+}
+
+export interface CreateTargetPayload {
+  image_id: string
+  scan_frequency?: string
+}
+

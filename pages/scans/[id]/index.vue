@@ -70,7 +70,7 @@
         </div>
 
         <!-- Tab Content -->
-        <component :is="activeComponent" :scan-id="scan.id" />
+        <component :is="activeComponent" :scan-id="scan.id" :key="`${activeTab}-${refreshKey}`" />
       </template>
     </div>
 </template>
@@ -92,6 +92,7 @@ const { pause, resume } = useIntervalFn(() => { refresh() }, 5000, { immediate: 
 const error = ref<string | null>(null)
 const activeTab = ref('findings')
 const tabCounts = ref<Record<string, number>>({})
+const refreshKey = ref(0)
 
 const tabs = [
   { key: 'findings', label: 'Findings' },
@@ -156,11 +157,17 @@ async function loadTabCounts() {
   }
 }
 
-// Load counts when scan resolves or changes
+// Load counts when scan resolves or changes, and trigger tab re-mount
+// when transitioning from running to completed/failed so child tabs refetch.
+let prevStatus: string | undefined
 watch(scan, (s) => {
   if (s && (s.status === 'completed' || s.status === 'failed')) {
     loadTabCounts()
+    if (prevStatus === 'running' || prevStatus === 'pending') {
+      refreshKey.value++
+    }
   }
+  prevStatus = s?.status
 }, { immediate: true })
 
 const severityItems = computed(() => {
