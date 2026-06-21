@@ -14,6 +14,41 @@
           <StatusBadge :status="scan.status" />
         </div>
 
+        <!-- Progress bar (only visible when running) -->
+        <div
+          v-if="scanProgress && (scan.status === 'pending' || scan.status === 'running')"
+          class="rounded-xl border border-gray-800 bg-gray-900 p-6"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-medium text-gray-300">Scan progress</h3>
+            <span class="text-xs text-gray-500 font-mono">{{ elapsed }}</span>
+          </div>
+          <!-- Phase steps -->
+          <div class="flex items-center gap-1">
+            <template v-for="(p, idx) in phases" :key="p.key">
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div
+                  class="size-3 rounded-full transition-colors duration-500"
+                  :class="phaseClass(p.key)"
+                />
+                <span
+                  class="text-[10px] text-center leading-tight transition-colors duration-500"
+                  :class="phaseTextClass(p.key)"
+                >{{ p.label }}</span>
+              </div>
+              <div
+                v-if="idx < phases.length - 1"
+                class="h-px flex-1 transition-colors duration-500"
+                :class="connectorClass(idx)"
+              />
+            </template>
+          </div>
+          <!-- Current phase description -->
+          <p class="mt-3 text-xs text-gray-500 text-center">
+            {{ phaseDescription(scanProgress.phase) }}
+          </p>
+        </div>
+
         <!-- Overview Cards -->
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div class="rounded-xl border border-gray-800 bg-gray-900 p-4 text-center">
@@ -93,6 +128,77 @@ const error = ref<string | null>(null)
 const activeTab = ref('findings')
 const tabCounts = ref<Record<string, number>>({})
 const refreshKey = ref(0)
+const scanProgress = ref<{ phase: string; status: string; started_at: string } | null>(null)
+
+const phases = [
+  { key: 'pending', label: 'Queued' },
+  { key: 'initializing', label: 'Init' },
+  { key: 'scanning', label: 'Scanning' },
+  { key: 'persisting', label: 'Saving' },
+  { key: 'completed', label: 'Done' },
+]
+
+// Poll progress separately (more frequent) for running scans
+const progressPhaseKey = computed(() => route.params.id as string)
+const { pause: pauseProgress, resume: resumeProgress } = useIntervalFn(async () => {
+  try {
+    const res = await apiGet<{ phase: string; status: string; started_at: string }>(
+      `/api/v1/scans/${progressPhaseKey.value}/progress`,
+    )
+    scanProgress.value = res.data
+  } catch { /* ignore */ }
+}, 3000, { immediate: true })
+
+// Phase order for progress calculation
+const phaseOrder: Record<string, number> = {
+  pending: 0, initializing: 1, scanning: 2, persisting: 3, completed: 4, failed: 4,
+}
+
+function phaseClass(key: string): string {
+  const cur = phaseOrder[scanProgress.value?.phase ?? 'pending'] ?? 0
+  const idx = phaseOrder[key] ?? 0
+  if (scanProgress.value?.phase === 'failed' && idx <= cur) return 'bg-red-500'
+  if (idx < cur) return 'bg-cyan-500'
+  if (idx === cur) return 'bg-cyan-400 ring-2 ring-cyan-400/50 animate-pulse'
+  return 'bg-gray-700'
+}
+
+function phaseTextClass(key: string): string {
+  const cur = phaseOrder[scanProgress.value?.phase ?? 'pending'] ?? 0
+  const idx = phaseOrder[key] ?? 0
+  if (scanProgress.value?.phase === 'failed' && idx <= cur) return 'text-red-400'
+  if (idx <= cur) return 'text-cyan-300'
+  return 'text-gray-600'
+}
+
+function connectorClass(idx: number): string {
+  const cur = phaseOrder[scanProgress.value?.phase ?? 'pending'] ?? 0
+  if (scanProgress.value?.phase === 'failed') return 'bg-red-500/50'
+  if (idx < cur) return 'bg-cyan-500'
+  return 'bg-gray-700'
+}
+
+function phaseDescription(phase: string): string {
+  switch (phase) {
+    case 'pending': return 'Scan is queued, waiting for a worker...'
+    case 'initializing': return 'Worker picked up the scan, preparing...'
+    case 'scanning': return 'Trivy is pulling and scanning the image. This may take several minutes.'
+    case 'persisting': return 'Saving scan results to the database...'
+    case 'completed': return 'Scan completed successfully.'
+    case 'failed': return 'Scan failed. Check the error message below.'
+    default: return ''
+  }
+}
+
+const elapsed = computed(() => {
+  if (!scanProgress.value?.started_at) return ''
+  const started = new Date(scanProgress.value.started_at).getTime()
+  const diff = Math.floor((Date.now() - started) / 1000)
+  if (diff < 60) return `${diff}s`
+  const mins = Math.floor(diff / 60)
+  const secs = diff % 60
+  return `${mins}m ${secs}s`
+})
 
 const tabs = [
   { key: 'findings', label: 'Findings' },
