@@ -205,7 +205,7 @@ function connectorClass(idx: number): string {
 
 function phaseDescription(phase: string): string {
   switch (phase) {
-    case 'pending': return 'Scan is queued, waiting for a worker...'
+    case 'pending': return 'Scan is queued in Redis. Up to 2 scans run in parallel — yours will start as soon as a worker frees up.'
     case 'initializing': return 'Worker picked up the scan, preparing...'
     case 'scanning': return 'Trivy is pulling and scanning the image. This may take several minutes.'
     case 'persisting': return 'Saving scan results to the database...'
