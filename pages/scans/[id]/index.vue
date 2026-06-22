@@ -92,8 +92,28 @@
         </div>
 
         <!-- Error Message -->
-        <div v-if="scan.error_message" class="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-          <p class="text-sm text-red-300">{{ scan.error_message }}</p>
+        <div v-if="scan.error_message" class="space-y-3">
+          <!-- Tips (shown in a calm info box) -->
+          <div v-if="errorTips" class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <div class="flex items-start gap-2">
+              <span class="i-lucide-lightbulb block size-4 mt-0.5 shrink-0 text-amber-400" />
+              <p class="text-sm text-amber-200 whitespace-pre-line">{{ errorTips }}</p>
+            </div>
+          </div>
+          <!-- Raw error (collapsible) -->
+          <details v-if="errorRaw" class="group">
+            <summary class="cursor-pointer text-xs text-gray-500 hover:text-gray-400 select-none">
+              <span class="i-lucide-chevron-down inline-block size-3 mr-1 group-open:rotate-180 transition-transform" />
+              Raw error details
+            </summary>
+            <div class="mt-2 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+              <p class="text-xs text-red-300/80 whitespace-pre-line font-mono leading-relaxed">{{ errorRaw }}</p>
+            </div>
+          </details>
+          <!-- Single error (no tips delimiter) -->
+          <div v-if="!errorTips && !errorRaw" class="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+            <p class="text-sm text-red-300 whitespace-pre-line">{{ scan.error_message }}</p>
+          </div>
         </div>
 
         <!-- Severity Counts -->
@@ -162,6 +182,19 @@ const phases = [
   { key: 'persisting', label: 'Saving' },
   { key: 'completed', label: 'Done' },
 ]
+
+// Split error_message into raw Trivy output and human tips
+const errorRaw = computed(() => {
+  const msg = scan.value?.error_message
+  if (!msg || !msg.includes('---TIPS---')) return null
+  return msg.split('---TIPS---')[0].trim()
+})
+
+const errorTips = computed(() => {
+  const msg = scan.value?.error_message
+  if (!msg || !msg.includes('---TIPS---')) return null
+  return msg.split('---TIPS---')[1].trim()
+})
 
 // Poll progress separately (more frequent) for running scans
 const progressPhaseKey = computed(() => route.params.id as string)
