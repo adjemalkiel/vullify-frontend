@@ -28,8 +28,21 @@
 
 <script setup lang="ts">
 const route = useRoute()
+const router = useRouter()
 
 const sidebarCollapsed = ref(false)
+
+const validRoutePaths = computed(() => {
+  const paths = new Set<string>()
+  for (const r of router.getRoutes()) {
+    // Collect only non-dynamic root paths (e.g. /findings, not /findings/:id)
+    const p = r.path
+    if (p && !p.includes(':') && !p.includes('*')) {
+      paths.add(p)
+    }
+  }
+  return paths
+})
 
 const breadcrumbs = computed(() => {
   const parts = route.path.split('/').filter(Boolean)
@@ -47,9 +60,11 @@ const breadcrumbs = computed(() => {
     if (isUuid) {
       label = 'Detail'
     }
+    // Only make clickable if a real non-dynamic route exists and it's not the last segment
+    const canLink = i < parts.length - 1 && validRoutePaths.value.has(path)
     crumbs.push({
       label,
-      to: i < parts.length - 1 ? path : undefined,
+      to: canLink ? path : undefined,
     })
   }
   return crumbs
