@@ -10,8 +10,13 @@ function apiFetch<T>(url: string, opts: Record<string, unknown> = {}): Promise<T
   const full = `${baseURL()}${url}`
   return $fetch<T>(full, {
     ...opts,
-    onResponseError({ response }: { response: { _data?: { message?: string; error?: string }; status: number } }) {
-      const msg = response._data?.message || response._data?.error || `Request failed (${response.status})`
+    onResponseError({ response }: { response: { _data?: { message?: string; error?: { code?: string; message?: string } | string }; status: number } }) {
+      let msg = response._data?.message
+      if (!msg && response._data?.error) {
+        const e = response._data.error
+        msg = typeof e === 'string' ? e : e.message
+      }
+      if (!msg) msg = `Request failed (${response.status})`
       toast.add({ title: 'Error', description: msg, color: 'error', icon: 'i-lucide-alert-triangle' })
     },
   } as Record<string, unknown>)

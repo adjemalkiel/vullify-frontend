@@ -325,7 +325,7 @@ async function handleCancel() {
     toast.add({ title: 'Scan cancelled', color: 'warning' })
     await refresh()
   } catch {
-    toast.add({ title: 'Failed to cancel scan', color: 'error' })
+    // error toast already shown by useApi's onResponseError
   } finally {
     cancelling.value = false
   }
@@ -338,7 +338,7 @@ async function handleRerun() {
     toast.add({ title: 'Scan re-queued', description: `New scan ${result.id.substring(0, 8)}...`, color: 'success' })
     await navigateTo(`/scans/${result.id}`)
   } catch {
-    toast.add({ title: 'Failed to re-run scan', color: 'error' })
+    // error toast already shown by useApi's onResponseError
   } finally {
     rerunning.value = false
   }
