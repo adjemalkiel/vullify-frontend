@@ -57,6 +57,14 @@
             <template #cell-last_seen_at="{ row }">
               <span class="text-gray-400">{{ formatDate(row.last_seen_at as string) }}</span>
             </template>
+            <template #cell-actions="{ row }">
+              <button
+                class="rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                @click.stop="imgToDelete = { id: row.id as string, name: `${row.repository}:${row.tag}` as string }; showImgDelete = true"
+              >
+                <span class="i-lucide-trash-2 block size-3.5" />
+              </button>
+            </template>
           </DataTable>
 
           <Pagination
@@ -102,6 +110,16 @@
         @confirm="handleDelete"
         @cancel="deleteConfirm = false"
       />
+
+      <ConfirmModal
+        :open="showImgDelete"
+        :title="`Delete Image`"
+        :message="`Are you sure you want to delete '${imgToDelete?.name}'? Its scans will remain but the image will disappear from this list.`"
+        confirm-text="Delete"
+        :danger="true"
+        @confirm="handleDeleteImage"
+        @cancel="showImgDelete = false"
+      />
     </div>
 </template>
 
@@ -118,6 +136,9 @@ const toast = useToast()
 const error = ref<string | null>(null)
 const syncing = ref(false)
 const deleteConfirm = ref(false)
+const deletingImg = ref(false)
+const showImgDelete = ref(false)
+const imgToDelete = ref<{ id: string; name: string } | null>(null)
 const showEditModal = ref(false)
 
 const editForm = reactive({ name: '', url: '' })
@@ -148,6 +169,7 @@ const imageColumns = [
   { key: 'repository', label: 'Repository:Tag' },
   { key: 'digest', label: 'Digest' },
   { key: 'last_seen_at', label: 'Last Seen' },
+  { key: 'actions', label: '' },
 ]
 
 async function handleSync() {
@@ -181,6 +203,18 @@ async function handleDelete() {
     navigateTo('/registries')
   } catch {
     deleteConfirm.value = false
+  }
+}
+
+async function handleDeleteImage() {
+  if (!imgToDelete.value) return
+  try {
+    await apiDelete(`/api/v1/images/${imgToDelete.value.id}`)
+    toast.add({ title: 'Image deleted', description: `${imgToDelete.value.name} removed from this registry`, color: 'success' })
+    showImgDelete.value = false
+    refreshNuxtData('registry-images')
+  } catch {
+    showImgDelete.value = false
   }
 }
 
