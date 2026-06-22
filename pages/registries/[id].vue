@@ -62,7 +62,7 @@
                 class="rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
                 @click.stop="imgToDelete = { id: row.id as string, name: `${row.repository}:${row.tag}` as string }; showImgDelete = true"
               >
-                <span class="i-lucide-trash-2 block size-3.5" />
+                <UIcon name="i-lucide-trash" class="size-3.5" />
               </button>
             </template>
           </DataTable>
