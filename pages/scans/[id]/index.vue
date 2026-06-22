@@ -11,7 +11,29 @@
             </h1>
             <p class="mt-1 text-sm text-gray-400 font-mono">Scan {{ scan.id.substring(0, 8) }}...</p>
           </div>
-          <StatusBadge :status="scan.status" />
+          <div class="flex items-center gap-3">
+            <StatusBadge :status="scan.status" />
+            <!-- Cancel (pending/running) -->
+            <button
+              v-if="scan.status === 'pending' || scan.status === 'running'"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-red-600/20 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-600/30 transition-colors border border-red-500/30"
+              :disabled="cancelling"
+              @click="handleCancel"
+            >
+              <UIcon name="i-lucide-x-circle" class="size-4" :class="{ 'animate-spin': cancelling }" />
+              {{ cancelling ? 'Cancelling...' : 'Cancel' }}
+            </button>
+            <!-- Re-run (cancelled/failed/completed) -->
+            <button
+              v-if="scan.status === 'cancelled' || scan.status === 'failed' || scan.status === 'completed'"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 transition-colors"
+              :disabled="rerunning"
+              @click="handleRerun"
+            >
+              <UIcon name="i-lucide-rotate-cw" class="size-4" :class="{ 'animate-spin': rerunning }" />
+              {{ rerunning ? 'Re-running...' : 'Re-run' }}
+            </button>
+          </div>
         </div>
 
         <!-- Progress bar (only visible when running) -->
@@ -121,7 +143,8 @@ import ScanSbom from './sbom.vue'
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
-const { apiGet } = useApi()
+const { apiGet, apiPost } = useApi()
+const toast = useToast()
 const { pause, resume } = useIntervalFn(() => { refresh() }, 5000, { immediate: false })
 
 const error = ref<string | null>(null)
@@ -129,6 +152,8 @@ const activeTab = ref('findings')
 const tabCounts = ref<Record<string, number>>({})
 const refreshKey = ref(0)
 const scanProgress = ref<{ phase: string; status: string; started_at: string } | null>(null)
+const cancelling = ref(false)
+const rerunning = ref(false)
 
 const phases = [
   { key: 'pending', label: 'Queued' },
@@ -291,5 +316,31 @@ const severityItems = computed(() => {
 function formatDate(iso: string): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleString()
+}
+
+async function handleCancel() {
+  cancelling.value = true
+  try {
+    await apiPost<ScanDetail>(`/api/v1/scans/${route.params.id}/cancel`)
+    toast.add({ title: 'Scan cancelled', color: 'warning' })
+    await refresh()
+  } catch {
+    toast.add({ title: 'Failed to cancel scan', color: 'error' })
+  } finally {
+    cancelling.value = false
+  }
+}
+
+async function handleRerun() {
+  rerunning.value = true
+  try {
+    const result = await apiPost<ScanDetail>(`/api/v1/scans/${route.params.id}/rerun`)
+    toast.add({ title: 'Scan re-queued', description: `New scan ${result.id.substring(0, 8)}...`, color: 'success' })
+    await navigateTo(`/scans/${result.id}`)
+  } catch {
+    toast.add({ title: 'Failed to re-run scan', color: 'error' })
+  } finally {
+    rerunning.value = false
+  }
 }
 </script>
