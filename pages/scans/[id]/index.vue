@@ -127,7 +127,7 @@
         </div>
 
         <!-- Tab Content -->
-        <component :is="activeComponent" :scan-id="scan.id" :key="`${activeTab}-${refreshKey}`" />
+        <component :is="activeComponent" :scan-id="scan.id" :scan-status="scan.status" :key="`${activeTab}-${refreshKey}`" />
       </template>
     </div>
 </template>
